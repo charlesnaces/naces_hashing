@@ -1,3 +1,6 @@
+import hashlib
+from re import fullmatch
+
 from fastapi import FastAPI
 from sqlmodel import Session , select
 from contextlib import asynccontextmanager
@@ -33,7 +36,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Sup youre in Users Database"}
+    return {"Meow"}
 
 
 @app.get("/users/{id}")
@@ -41,11 +44,17 @@ async def read_employee(id):
     with Session(engine) as session:
         print(id,'--------------------------------------------------------------')
         user = session.get(Users, id)
-        return {"message": user}
+        if user is None:
+            return {"message": None}
+        message = {"id": user.id, "username": user.username}
+        if fullmatch(r"[0-9a-f]{64}", user.password):
+            message["password"] = user.password
+        return {"message": message}
     
 
 @app.post("/users")
-async def root(users  : Users):
+def create_user(users: Users):
+    users.password = hashlib.sha256(users.password.encode()).hexdigest()
     with Session(engine) as session:
         session.add(users)
         session.commit()
@@ -53,79 +62,34 @@ async def root(users  : Users):
         return {"message": users}
     
 @app.post("/usersLogin")
-async def root(users  : Users):
+def login(users: Users):
+    input_hashed = hashlib.sha256(users.password.encode()).hexdigest()
     with Session(engine) as session:
+        statement = select(Users).where(Users.username == users.username)
+        for user in session.exec(statement):
+            if user.password == input_hashed:
+                return {"status": "success"}
+            if user.password == users.password and not fullmatch(r"[0-9a-f]{64}", user.password):
+                user.password = input_hashed
+                session.commit()
+                return {"status": "success"}
 
-
-        print()
-        statement = select(Users).where(Users.name == users.name).where(Users.password == users.password)
-        results = session.exec(statement)
-
-        # if(results)
-
-        # print('-----------------------------')
-        # print(Users.password , users.password)
-        # print('-----------------------------')
-
-        result = results.first()
-        print(result)
-
-        if (result == None):
-            return {"status":"failed"}
-
-
-        return {
-            "status":"success",
-            "data": result
-            }
+    return {"status": "failed"}
     
 
-
-@app.get("/")
-async def root():
-    return {"message": "Youre in Specs Database"}
 
 
 @app.get("/specs/{id}")
-async def read_specs(id):
+async def read_specs(id: int):
     with Session(engine) as session:
-        print(id,'--------------------------------------------------------------')
-        spec = session.get(Spec, id)
+        spec = session.get(Specs, id)
         return {"message": spec}
-    
+
 
 @app.post("/specs")
-async def root(specs  : Specs):
+async def save_specs(specs: Specs):
     with Session(engine) as session:
         session.add(specs)
         session.commit()
         session.refresh(specs)
         return {"message": specs}
-    
-@app.post("/specsLogin")
-async def root(specs  : Specs):
-    with Session(engine) as session:
-
-
-        print()
-        statement = select(Specs).where(Specs.name == specs.name).where(Specs.password == specs.password)
-        results = session.exec(statement)
-
-        # if(results)
-
-        # print('-----------------------------')
-        # print(Users.password , users.password)
-        # print('-----------------------------')
-
-        result = results.first()
-        print(result)
-
-        if (result == None):
-            return {"status":"failed"}
-
-
-        return {
-            "status":"success",
-            "data": result
-            }
-    

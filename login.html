@@ -13,7 +13,7 @@
 		Username
 		<input id='username' type='text'>
 		Password
-		<input id='password' type='text'>
+		<input id='password' type='password'>
 	
 
 
@@ -26,11 +26,15 @@
 			Register
 		</button>
 
+		<p id="login-error"></p>
+
 		<script>
 
 
 
 		const clickButton = (a,b) =>{
+			const error = document.getElementById('login-error');
+			error.textContent = '';
 
 			const postData = {
 				username:a,
@@ -39,7 +43,7 @@
 			};
 
 			const data = {
-				method: 'GET',
+				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -48,15 +52,18 @@
 	
 			async function fetchData() {
 				try {
-					const response = await fetch('http://127.0.0.1:8000/users',data);
-					console.log(response)
-					if (response.data.status =='success') {
-						document.location.href = 'profile.html.html';
-					} else {
-						throw new Error('Failed to fetch data');
+					const response = await fetch('http://127.0.0.1:8000/usersLogin',data);
+					if (!response.ok) {
+						throw new Error('Login failed');
 					}
-				} catch (error) {
-					console.error('Error:', error); 
+					const result = await response.json();
+					if (result.status == 'success') {
+						document.location.href = 'computer.html';
+					} else {
+						error.textContent = 'Wrong username or password.';
+					}
+				} catch {
+					error.textContent = 'Could not log in. Try again.';
 				}
 			}
 
